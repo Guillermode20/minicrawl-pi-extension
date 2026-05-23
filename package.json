@@ -1,0 +1,17 @@
+{
+  "name": "minicrawl-pi-extension",
+  "version": "2.0.0",
+  "description": "Pi extension that exposes MiniCrawl's self-hosted Firecrawl-compatible API as LLM tools — scrape, search, crawl, map, and batch-scrape URLs.",
+  "keywords": ["pi-package", "minicrawl", "web-scraping", "search", "crawl"],
+  "license": "MIT",
+  "author": "",
+  "type": "module",
+  "pi": {
+    "extensions": ["./minicrawl.ts"]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  }
+}
