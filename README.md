@@ -1,6 +1,6 @@
 # MiniCrawl Pi Extension 🔍
 
-A [pi](https://pi.dev) extension that exposes [MiniCrawl](https://github.com/your-org/minicrawl)'s self-hosted API as LLM-callable tools. Works with any Firecrawl-compatible API.
+A [pi](https://pi.dev) extension that exposes [MiniCrawl](https://github.com/Guillermode20/minicrawl)'s self-hosted API as LLM-callable tools. Works with any Firecrawl-compatible API.
 
 ## Tools Provided
 
@@ -21,7 +21,7 @@ A [pi](https://pi.dev) extension that exposes [MiniCrawl](https://github.com/you
 
 ```bash
 # Clone and start MiniCrawl (with SearXNG for built-in web search)
-git clone https://github.com/your-org/minicrawl
+git clone https://github.com/Guillermode20/minicrawl
 cd minicrawl
 docker compose up --build -d
 
@@ -37,8 +37,8 @@ curl localhost:3000/health
 # From a local directory
 pi install /path/to/minicrawl-pi-extension
 
-# Or from git (once pushed)
-pi install git:github.com/your-org/minicrawl-pi-extension
+# Or from git
+pi install git:github.com/Guillermode20/minicrawl-pi-extension
 ```
 
 ### Option 2: Manual placement
@@ -163,7 +163,7 @@ Parameters:
 
 ```bash
 # Clone
-git clone https://github.com/your-org/minicrawl-pi-extension
+git clone https://github.com/Guillermode20/minicrawl-pi-extension
 cd minicrawl-pi-extension
 
 # No build step needed — pi uses jiti to load TypeScript directly
