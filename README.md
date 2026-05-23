@@ -59,13 +59,42 @@ pi -e /path/to/minicrawl-pi-extension/minicrawl.ts
 
 ## Configuration
 
-By default, the extension connects to `http://localhost:3000` (MiniCrawl's default port).
+The extension reads the `MINICRAWL_URL` environment variable to find your MiniCrawl server. If unset, it defaults to `http://localhost:3000`.
 
-To connect to a remote or differently-configured MiniCrawl instance, edit the `MINICRAWL_URL` constant at the top of `minicrawl.ts`:
+### Local MiniCrawl (default)
 
-```typescript
-const MINICRAWL_URL = "http://localhost:3000";
+```bash
+# Start MiniCrawl locally, then just launch pi
+pi
 ```
+
+### Remote MiniCrawl (on a VM, server, etc.)
+
+```bash
+# Point to your VM's IP or hostname
+export MINICRAWL_URL=http://YOUR_VM_IP:3000
+pi
+```
+
+You can also put it in your shell profile (`~/.bashrc`, `~/.zshrc`) so it's always set:
+
+```bash
+echo 'export MINICRAWL_URL=http://YOUR_VM_IP:3000' >> ~/.bashrc
+source ~/.bashrc
+```
+
+> **Firewall note:** Make sure port 3000 is accessible from your local PC. If MiniCrawl is behind a firewall, you can use an SSH tunnel instead (see below).
+
+### Using an SSH tunnel (no open ports needed)
+
+If you don't want to expose port 3000 on your VM, tunnel through SSH:
+
+```bash
+# Run this in a terminal (keep it open)
+ssh -L 3000:localhost:3000 user@YOUR_VM_IP
+```
+
+Now MiniCrawl is accessible at `http://localhost:3000` on your local PC — no env var needed, the default just works.
 
 ## Usage
 

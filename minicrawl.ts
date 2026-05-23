@@ -2,7 +2,10 @@
  * MiniCrawl Extension
  *
  * Exposes MiniCrawl's self-hosted Firecrawl-compatible API as pi tools.
- * Requires the MiniCrawl server to be running on port 3000.
+ * Requires the MiniCrawl server to be running.
+ *
+ * Set the MINICRAWL_URL environment variable to point to your MiniCrawl server.
+ * Defaults to http://localhost:3000.
  *
  * Tools provided:
  * - minicrawl_scrape  — Scrape a URL into clean markdown with structured TL;DR summaries
@@ -17,7 +20,7 @@
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-const MINICRAWL_URL = "http://localhost:3000";
+const MINICRAWL_URL = process.env.MINICRAWL_URL ?? "http://localhost:3000";
 const MAX_MARKDOWN_PREVIEW = 5000;
 const MAX_SECTION_PREVIEW = 800;
 
@@ -553,7 +556,7 @@ export default function (pi: ExtensionAPI) {
 		.then((res) => res.json())
 		.then((data) => {
 			if (data.status !== "ok") {
-				console.warn("[minicrawl] Server at localhost:3000 returned non-ok status");
+				console.warn(`[minicrawl] Server at ${MINICRAWL_URL} returned non-ok status`);
 			}
 		})
 		.catch(() => {
