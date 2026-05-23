@@ -4,8 +4,10 @@
  * Exposes MiniCrawl's self-hosted Firecrawl-compatible API as pi tools.
  * Requires the MiniCrawl server to be running.
  *
- * Set the MINICRAWL_URL environment variable to point to your MiniCrawl server.
- * Defaults to http://localhost:3000.
+ * Configuration (priority order):
+ *   1. MINICRAWL_URL environment variable
+ *   2. Config file (~/.pi/agent/minicrawl-config.json) — set via /minicrawl-url command
+ *   3. Default: http://localhost:3000
  *
  * Tools provided:
  * - minicrawl_scrape  — Scrape a URL into clean markdown with structured TL;DR summaries
@@ -17,12 +19,67 @@
  * v2 — Enhanced JSON output with sections, token budgets, citations, and page type classification.
  */
 
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-const MINICRAWL_URL = process.env.MINICRAWL_URL ?? "http://localhost:3000";
+const DEFAULT_URL = "http://localhost:3000";
+const CONFIG_PATH = join(homedir(), ".pi", "agent", "minicrawl-config.json");
 const MAX_MARKDOWN_PREVIEW = 5000;
 const MAX_SECTION_PREVIEW = 800;
+
+// ---------------------------------------------------------------------------
+// Persistent config: stored in ~/.pi/agent/minicrawl-config.json
+// ---------------------------------------------------------------------------
+
+interface MinicrawlConfig {
+	minicrawlUrl?: string;
+}
+
+let _cachedConfig: MinicrawlConfig | null = null;
+
+function loadConfig(): MinicrawlConfig {
+	if (_cachedConfig) return _cachedConfig;
+	try {
+		if (existsSync(CONFIG_PATH)) {
+			const raw = readFileSync(CONFIG_PATH, "utf-8");
+			_cachedConfig = JSON.parse(raw) as MinicrawlConfig;
+			return _cachedConfig;
+		}
+	} catch {
+		// Corrupted file — ignore
+	}
+	_cachedConfig = {};
+	return _cachedConfig;
+}
+
+function saveConfig(config: MinicrawlConfig): void {
+	try {
+		const dir = join(homedir(), ".pi", "agent");
+		if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+		writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), "utf-8");
+		_cachedConfig = config;
+	} catch (e) {
+		console.error(`[minicrawl] Failed to save config: ${e}`);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Resolve the effective MiniCrawl URL (env > config > default)
+// ---------------------------------------------------------------------------
+
+function getMinicrawlUrl(): string {
+	// Env var takes highest priority
+	if (process.env.MINICRAWL_URL) return process.env.MINICRAWL_URL;
+
+	// Config file from /minicrawl-url command
+	const config = loadConfig();
+	if (config.minicrawlUrl) return config.minicrawlUrl;
+
+	return DEFAULT_URL;
+}
 
 // ---------------------------------------------------------------------------
 // Types matching the enhanced Go server response
@@ -77,7 +134,8 @@ interface SearchResponse {
 // ---------------------------------------------------------------------------
 
 async function callMiniCrawl(endpoint: string, body: unknown): Promise<unknown> {
-	const res = await fetch(`${MINICRAWL_URL}/v1/${endpoint}`, {
+	const baseUrl = getMinicrawlUrl();
+	const res = await fetch(`${baseUrl}/v1/${endpoint}`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(body),
@@ -551,12 +609,56 @@ export default function (pi: ExtensionAPI) {
 	pi.registerTool(mapTool);
 	pi.registerTool(batchTool);
 
+	// /minicrawl-url command — set/check/reset the MiniCrawl server URL
+	pi.registerCommand("minicrawl-url", {
+		description: "Show, set, or reset the MiniCrawl server URL. Usage: /minicrawl-url [url|reset]",
+		handler: async (args, ctx) => {
+			const currentUrl = getMinicrawlUrl();
+
+			if (!args || args.trim() === "") {
+				// Show current URL
+				ctx.ui.notify(
+					`MiniCrawl URL: ${currentUrl} (${currentUrl === DEFAULT_URL ? "default" : currentUrl === process.env.MINICRAWL_URL ? "from env" : "from config"})`,
+					"info",
+				);
+				return;
+			}
+
+			const trimmed = args.trim();
+
+			if (trimmed === "reset") {
+				// Reset to default
+				const config = loadConfig();
+				delete config.minicrawlUrl;
+				saveConfig(config);
+				ctx.ui.notify(`MiniCrawl URL reset to default (${DEFAULT_URL})`, "info");
+				return;
+			}
+
+			// Validate URL
+			let parsed: URL;
+			try {
+				parsed = new URL(trimmed);
+				if (!parsed.protocol.startsWith("http")) throw new Error("Must be http or https");
+			} catch {
+				ctx.ui.notify(`Invalid URL: "${trimmed}". Use http://host:port format.`, "error");
+				return;
+			}
+
+			// Save to config
+			const url = parsed.toString().replace(/\/+$/, "");
+			saveConfig({ minicrawlUrl: url });
+			ctx.ui.notify(`MiniCrawl URL set to ${url} (saved permanently)`, "info");
+		},
+	});
+
 	// Silently verify MiniCrawl is reachable on startup (no console.log noise)
-	fetch(`${MINICRAWL_URL}/health`, { signal: AbortSignal.timeout(2000) })
+	const startupUrl = getMinicrawlUrl();
+	fetch(`${startupUrl}/health`, { signal: AbortSignal.timeout(2000) })
 		.then((res) => res.json())
 		.then((data) => {
 			if (data.status !== "ok") {
-				console.warn(`[minicrawl] Server at ${MINICRAWL_URL} returned non-ok status`);
+				console.warn(`[minicrawl] Server at ${startupUrl} returned non-ok status`);
 			}
 		})
 		.catch(() => {

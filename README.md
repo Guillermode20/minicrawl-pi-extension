@@ -59,31 +59,32 @@ pi -e /path/to/minicrawl-pi-extension/minicrawl.ts
 
 ## Configuration
 
-The extension reads the `MINICRAWL_URL` environment variable to find your MiniCrawl server. If unset, it defaults to `http://localhost:3000`.
+The extension resolves the MiniCrawl URL in this priority order:
 
-### Local MiniCrawl (default)
+1. **`MINICRAWL_URL` environment variable** — for CI, one-off overrides, or permanent shell config
+2. **Config file** (`~/.pi/agent/minicrawl-config.json`) — set interactively via `/minicrawl-url`
+3. **`http://localhost:3000`** — default fallback
 
-```bash
-# Start MiniCrawl locally, then just launch pi
-pi
+### Quick setup from within pi
+
+Once the extension is loaded, just use the `/minicrawl-url` command:
+
+```
+/minicrawl-url                         # Show current URL
+/minicrawl-url http://192.168.1.50:3000  # Set a new URL (saved permanently)
+/minicrawl-url reset                   # Reset to default (http://localhost:3000)
 ```
 
-### Remote MiniCrawl (on a VM, server, etc.)
+The URL is saved to `~/.pi/agent/minicrawl-config.json` and persists across pi restarts. No shell config or file editing needed.
+
+### Using an environment variable
 
 ```bash
-# Point to your VM's IP or hostname
 export MINICRAWL_URL=http://YOUR_VM_IP:3000
 pi
 ```
 
-You can also put it in your shell profile (`~/.bashrc`, `~/.zshrc`) so it's always set:
-
-```bash
-echo 'export MINICRAWL_URL=http://YOUR_VM_IP:3000' >> ~/.bashrc
-source ~/.bashrc
-```
-
-> **Firewall note:** Make sure port 3000 is accessible from your local PC. If MiniCrawl is behind a firewall, you can use an SSH tunnel instead (see below).
+The env var takes highest priority — useful for temporarily overriding the config file.
 
 ### Using an SSH tunnel (no open ports needed)
 
@@ -94,7 +95,7 @@ If you don't want to expose port 3000 on your VM, tunnel through SSH:
 ssh -L 3000:localhost:3000 user@YOUR_VM_IP
 ```
 
-Now MiniCrawl is accessible at `http://localhost:3000` on your local PC — no env var needed, the default just works.
+Now MiniCrawl is accessible at `http://localhost:3000` on your local PC — no config needed, the default just works.
 
 ## Usage
 
